@@ -1,33 +1,28 @@
-import pandas as pd
 from scipy import stats
-
-from tools import data_preprocessing, plt_hist, plt_monthly_avg, calculate_char_freq, plt_heatmap
+from tools import data_preprocessing, plt_hist, plt_monthly_avg, calculate_char_freq, plt_heatmap, split_dataset, \
+    estimate_effect_size, pm_model, get_hourly_metrics
 from data_generator import get_df
+import time
 
+now = time.time()
 ## Считывание датасета
 dataset_path = 'dataset.parquet'
 api_url = 'https://api.hh.ru/areas'
 n_records = 10 ** 8
 dtypes = {
-    'date': 'datetime64',
+    'date': 'datetime64[ns]',
     'numeric_column': 'float32',
     'city_names': 'category'
 }
 
-df = get_df(dataset_path, api_url, n_records, dtypes)[:100000]
+df = get_df(dataset_path, api_url, n_records, dtypes)
 
 ## Считывание и процессинг
 df = data_preprocessing(df)
 
 ## Расчет метрик
 # Агрегация по времени и расчет метрик для каждого часа
-hourly_metrics = df.groupby(df['date'].dt.hour).agg({
-    'city_names': pd.Series.nunique,
-    'numeric_column': ['mean', 'median']
-})
-hourly_metrics.columns = ['_'.join(col).strip() for col in hourly_metrics.columns.values]
-hourly_metrics['city_names_nunique'] = hourly_metrics['city_names_nunique'].astype('int32')
-
+hourly_metrics = get_hourly_metrics(df)
 # # SQL ClickHouse
 """
 SELECT
@@ -57,21 +52,54 @@ plt_monthly_avg(df.groupby(df['date'].dt.month)['numeric_column'].mean())
 
 # Heatmap частотности символов в строковой колонке
 char_freq = calculate_char_freq(df['city_names'])
-plt_heatmap(char_freq, head=None, tail=None)
+# Показываю только топ 20, но в коде оставил возможность корректировки отображения топа и стока
+plt_heatmap(char_freq, head=20, tail=None)
 
-# Дополнительное задание
+# # Дополнительное задание 1
 # Разделение датасета на 3 части
-df_25_1 = df.sample(frac=0.25)
-df_25_2 = df.drop(df_25_1.index).sample(frac=0.333)
-df_50 = df.drop(df_25_1.index).drop(df_25_2.index)
+df_25_1, df_25_2, df_50 = split_dataset(df['numeric_column'])
 
 # Проверка на статистическую значимость различий для среднего числовой колонки
 # Использование ANOVA для сравнения средних значений между тремя группами
-f_value, p_value = stats.f_oneway(df_25_1['numeric_column'], df_25_2['numeric_column'], df_50['numeric_column'])
-print('f_value, p_value', f_value, p_value)
+f_val, p_val = stats.f_oneway(df_25_1, df_25_2, df_50)
+print('f_val, p_val', f_val, p_val)
+"""
+p_val > 0.05, значит значительного различия между группами не наблюдаются
+"""
 
-# Расчет силы эффекта
-# Использование квадрата эта в качестве меры силы эффекта
-eta_squared = (f_value * (len(df_25_1) + len(df_25_2) + len(df_50) - 3)) / (f_value + (len(df_25_1) + len(df_25_2) + len(df_50) - 3))
-print('eta_squared', eta_squared)
+# # # Расчет силы эффекта
+eta_squared = estimate_effect_size(df_25_1, df_25_2, df_50)
+print('Сила эффекта', eta_squared)
+"""
+Выбрал его так, как он подходит для анализа 2 и более выборок по одному или нескольким критериям
+Критерии для выбора: 
+1) Дисперсии равны
+2) Размер выборок подходит (>= 10)
+3) Равенство размера выборок (тут я немного пренебрёг)
+4) Нормальное распределение
+5) Нету выбросов (при фильтрации можно было бы отфильтровать)
+Сила эффекта < 1 так, что выборки несильно отличаются
+"""
 
+# Можно на linux указать большее количество ядер, на винде возникают проблемы (занимает ~98-99% от выполнения всего кода)
+now_1 = time.time()
+pm_model(df_25_1, df_25_2, df_50, cores=1)
+print('Время pm_model', (time.time() - now_1) / 60, (time.time() - now_1) / (time.time() - now) * 100, '%')
+print('Время', (time.time() - now) / 60)
+"""
+Разница между выборками в допустимом интервале так, что нельзя утверждать, что выборки имеют значительные различия
+"""
+
+# Дополнительное задание 2
+"""
+1 метод - Метод частотной вероятности. Но было бы наивно полагать, что продукты компаний равны (тем более, что мы вообще не сделали ни одного удачного прототипа)
+ и люди, которые их делают имеют одинаковую квалификацию.
+5 / 1000 * 100 = 0.05%
+2 метод - Метод Байесовской вероятности. Применить вряд ли удастся так, как мы можем позаимствовать у конкурента априорную вероятность,
+но данных по успешным решениям у нашей компании нет
+3 метод - Метод максимального правдоподобия. Тоже самое что и выше :(
+
+Необходимы данные:
+1. Исторические данные о успехах прототипов нашей компании.
+2. Качественное сравнение прототипов обеих компаний (просто интересно, хотя у нас успешных нету так, что и сравнивать нечего).
+"""

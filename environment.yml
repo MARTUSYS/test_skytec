@@ -1,0 +1,17 @@
+name: test_3
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - opencv
+  - pandas
+  - pymc>=5
+#  - scipy
+  - seaborn
+  - requests
+  - pyarrow
+  - fastparquet
+  - arviz
+#  - pip:
+#    - patsy
