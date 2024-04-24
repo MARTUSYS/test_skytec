@@ -1,0 +1,14 @@
+Датасет успешно загружен из dataset.parquet.
+Доверительный интервал (30.398812178613625, 69.60115730380825)
+f_val, p_val 0.5616358858974688 0.5702753944845318
+Сила эффекта 0.7706977755494888
+Auto-assigning NUTS sampler...
+Initializing NUTS using jitter+adapt_diag...
+Sequential sampling (2 chains in 1 job)
+NUTS: [sigma_A, sigma_B, sigma_C, mean_A, mean_B, mean_C]
+Sampling chain 0, 0 divergences                                      0% 0:00:00
+Sampling chain 1, 0 divergences                                      0% 0:00:00
+Sampling 2 chains for 1_000 tune and 1_000 draw iterations (2_000 + 2_000 draws total) took 78 seconds.
+We recommend running at least 4 chains for robust computation of convergence diagnostics
+Время pm_model 1.36 мин 23.88 % от всего кода
+Время 5.72 мин

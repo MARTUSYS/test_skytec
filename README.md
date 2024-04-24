@@ -11,3 +11,6 @@
     conda activate test_3
 ```
 Главный файл main.py
+
+Самая медленная часть кода - это функция tools.pm_model(), поэтому я туда подаю частичные данные (Баесовский подход). Её вроде можно ускорить с помощью gpu, но это не точно (https://jax.readthedocs.io/en/latest/installation.html, https://www.pymc.io/projects/examples/en/latest/howto/wrapping_jax_function.html) и это доступно только на linux
+Выходные данные представлены в папке output.

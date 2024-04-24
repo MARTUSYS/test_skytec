@@ -103,7 +103,7 @@ def plt_heatmap(char_freq: dict, head: int = None, tail: int = None) -> None:
 
     plt.figure(figsize=(12, 18))
 
-    ax = sns.heatmap(df_freq.set_index('Character'), annot=False, fmt='g', cmap='viridis')
+    ax = sns.heatmap(df_freq.set_index('Character'), annot=True, fmt='g', cmap='viridis')
     # for text in ax.texts:
     #     text.set_rotation(90)
 
@@ -135,10 +135,15 @@ def estimate_effect_size(part1: pd.Series, part2: pd.Series, part3: pd.Series) -
     return effect_size
 
 
-def pm_model(part1: pd.Series, part2: pd.Series, part3: pd.Series, cores: int = 1) -> None:
-    part1 = part1.to_numpy()
-    part2 = part2.to_numpy()
-    part3 = part3.to_numpy()
+def pm_model(part1: pd.Series, part2: pd.Series, part3: pd.Series, sampling_rate: float = 1, cores: int = 1) -> None:
+    """
+    Bayesian model for analyzing revenue data from three different groups.
+    :param sampling_rate: rate at which to sample data (default is 1)
+    :param cores: number of CPU cores to use for sampling (default is 1 for windows, for linux use 4)
+    """
+    part1 = part1.to_numpy()[:int(len(part1) * sampling_rate)]
+    part2 = part2.to_numpy()[:int(len(part1) * sampling_rate)]
+    part3 = part3.to_numpy()[:int(len(part1) * sampling_rate)]
 
     with pm.Model() as revenue_model:
         sigma_A = pm.HalfNormal("sigma_A", 10)
